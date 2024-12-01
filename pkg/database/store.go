@@ -1,4 +1,4 @@
-package db
+package database
 
 // Store Define the Store interface
 type Store interface {

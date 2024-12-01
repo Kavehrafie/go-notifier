@@ -3,7 +3,6 @@ package model
 import (
 	"database/sql"
 	"github.com/google/uuid"
-	"time"
 )
 
 type NotificationStatus int
@@ -20,7 +19,7 @@ type Notification struct {
 	Content     string       `json:"content" db:"content"`
 	ScheduledAt sql.NullTime `json:"schedule_at" db:"schedule_at"`
 	SentAt      sql.NullTime `json:"sent_at" db:"sent_at"`
-	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
+	CreatedAt   sql.NullTime `json:"created_at" db:"created_at"`
 	UpdateAt    sql.NullTime `json:"updated_at" db:"updated_at"`
 	DeletedAt   sql.NullTime `json:"deleted_at" db:"deleted_at"`
 }
@@ -35,6 +34,5 @@ func NewNotification(req NotificationCreateRequest) *Notification {
 		ID:          uuid.NewString(),
 		Content:     req.Content,
 		ScheduledAt: req.ScheduledAt,
-		CreatedAt:   time.Now(),
 	}
 }
