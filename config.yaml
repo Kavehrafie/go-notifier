@@ -1,0 +1,5 @@
+server:
+  env: development
+db:
+  driver: sqlite3
+  max_conns: 15
