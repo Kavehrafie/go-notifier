@@ -55,7 +55,7 @@ func (s *sqliteStore) initSchema() error {
 		CREATE TABLE IF NOT EXISTS scheduled_actions (
 		    id TEXT PRIMARY KEY,
 		    title TEXT NOT NULL,
-		    status TEXT NOT NULL,
+		    status NUMERIC NOT NULL,
 		    description TEXT,
 		    url TEXT NOT NULL,
 		    payload TEXT,
@@ -90,7 +90,7 @@ func (s *sqliteStore) Create(ctx context.Context, sa *model.ScheduledAction) err
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err = s.db.ExecContext(ctx, query,
+	result, err := s.db.ExecContext(ctx, query,
 		sa.ID,
 		sa.Title,
 		model.StatusPending,
@@ -102,6 +102,11 @@ func (s *sqliteStore) Create(ctx context.Context, sa *model.ScheduledAction) err
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create scheduled action: %v", err)
+	}
+	if rows, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("failed to get rows affected: %v", err)
+	} else if rows == 0 {
+		return store.ErrAlreadyExists
 	}
 
 	return nil

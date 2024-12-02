@@ -11,6 +11,7 @@ import (
 var (
 	ErrNotFound      = errors.New("not found")
 	ErrInvalidDriver = errors.New("invalid database drive")
+	ErrAlreadyExists = errors.New("already exists")
 )
 
 type Store interface {
