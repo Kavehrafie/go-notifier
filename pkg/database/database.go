@@ -1,10 +1,17 @@
 package database
 
-type Driver interface {
-}
+type Driver string
+
+const (
+	SQLite   Driver = "sqlite"
+	Postgres Driver = "postgres"
+	Redis    Driver = "redis"
+)
+
 type Config struct {
-	Driver Driver
-	URL    string
+	Driver   Driver
+	Database string
+	URL      string
 	// 1. define database config
 }
 

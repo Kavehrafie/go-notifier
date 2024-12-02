@@ -30,7 +30,7 @@ type ScheduledAction struct {
 	Status      ScheduledActionStatus `json:"status" db:"status"`
 	Payload     string                `json:"payload" db:"payload"`
 	Metadata    map[string]string     `json:"metadata" db:"metadata"`
-	FailureMsg  string                `json:"failure_msg" db:"failure_msg"`
+	Failures    int                   `json:"failures" db:"failures"`
 }
 
 type ScheduleActionRegisterInput struct {
