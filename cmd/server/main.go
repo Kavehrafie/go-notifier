@@ -11,7 +11,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// 1. load config
 
 	// 2. load store
