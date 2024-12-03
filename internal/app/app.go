@@ -1,23 +1,25 @@
 package app
 
 import (
+	"context"
+	service "github.com/kavehrafie/go-scheduler/internal/service/scheduler"
 	"github.com/kavehrafie/go-scheduler/internal/store/sqlite"
 	"github.com/kavehrafie/go-scheduler/pkg/database"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
 )
 
 type App struct {
-	server *echo.Echo
-	//svc    *SchedulerService
+	server       *echo.Echo
+	SchedulerSvc *service.Scheduler
 }
 
-func NewApp() *App {
+func NewApp(log *logrus.Logger) *App {
 
 	dbCfg := database.Config{
-		Driver:   database.SQLite,
-		Database: "./db/basket.db",
+		Driver: database.SQLite,
+		URL:    "./db/sql.db",
 	}
 
 	factory := &sqlite.SQLiteFactory{}
@@ -33,9 +35,10 @@ func NewApp() *App {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	scheduler := service.NewScheduler(&store, log)
 	app := &App{
-		server: e,
-		//svc: svc
+		server:       e,
+		SchedulerSvc: scheduler,
 	}
 
 	app.routes()
@@ -44,7 +47,15 @@ func NewApp() *App {
 }
 
 func (a *App) routes() {
-	api := a.server.Group("/api")
+	//api := a.server.Group("/api")
 
 	//api.POST("/scheduled-actions", a.svc)
+}
+
+func (a *App) Start(addr string) error {
+	return a.server.Start(addr)
+}
+
+func (a *App) Shutdown(ctx context.Context) error {
+	return a.server.Shutdown(ctx)
 }

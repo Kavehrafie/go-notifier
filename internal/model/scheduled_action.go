@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
-	"github.com/robfig/cron/v3"
-	"github.com/sirupsen/logrus"
-	"net/http"
 	"time"
 )
 
@@ -15,8 +12,9 @@ type ScheduledRequestStatus int
 var validate *validator.Validate
 
 const (
-	StatusDisabled ScheduledRequestStatus = 0
-	StatusActive   ScheduledRequestStatus = 1
+	StatusPending  ScheduledRequestStatus = 0
+	StatusResolved ScheduledRequestStatus = 1
+	StatusFailed   ScheduledRequestStatus = 2
 )
 
 type ScheduledRequest struct {
@@ -27,6 +25,7 @@ type ScheduledRequest struct {
 	CreatedAt   time.Time              `json:"created_at" db:"created_at"`
 	ExecutedAt  sql.NullTime           `json:"executed_at" db:"executed_at"`
 	DeletedAt   sql.NullTime           `json:"deleted_at" db:"deleted_at"`
+	Suspend     bool                   `json:"suspend" db:"suspend"`
 	URL         string                 `json:"url" db:"url"`
 	Header      map[string]string      `json:"header" db:"header"`
 	Status      ScheduledRequestStatus `json:"status" db:"status"`
@@ -34,14 +33,7 @@ type ScheduledRequest struct {
 	Error       string                 `json:"error" db:"error,omitempty"`
 }
 
-type Scheduler struct {
-	db     *sql.DB
-	log    *logrus.Logger
-	client *http.Client
-	cron   *cron.Cron
-}
-
-type ScheduleActionRegisterInput struct {
+type ScheduledRequestRegisterInput struct {
 	Title       string            `json:"title"  validate:"required,min=3,max=100"`
 	Description string            `json:"description"  validate:"omitempty,max=500"`
 	URL         string            `json:"url"  validate:"required,url"`
@@ -58,7 +50,6 @@ type ValidationError struct {
 
 func init() {
 	validate = validator.New()
-
 	_ = validate.RegisterValidation("future_time", validateFutureTime)
 }
 
