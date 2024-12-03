@@ -51,14 +51,22 @@ func (f *SQLiteFactory) NewStore(config database.Config) (store.Store, error) {
 	return s, nil
 }
 
-func (s *sqliteStore) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (s *sqliteStore) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query scheduled requests: %w", err)
 	}
-	defer rows.Close()
 
 	return rows, nil
+}
+
+func (s *sqliteStore) Exec(query string, args ...interface{}) error {
+	_, err := s.db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
 }
 
 func (s *sqliteStore) initSchema() error {

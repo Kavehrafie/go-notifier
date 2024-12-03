@@ -37,7 +37,7 @@ type ScheduledRequestRegisterInput struct {
 	Title       string            `json:"title"  validate:"required,min=3,max=100"`
 	Description string            `json:"description"  validate:"omitempty,max=500"`
 	URL         string            `json:"url"  validate:"required,url"`
-	Payload     string            `json:"payload"  validate:"required,json"`
+	Payload     json.RawMessage   `json:"payload"  validate:"required,json"`
 	ScheduledAt time.Time         `json:"scheduled_at" validate:"required,future_time"`
 	Header      map[string]string `json:"header"  validate:"omitempty,dive,keys,max=50,endkeys,max=200"`
 }

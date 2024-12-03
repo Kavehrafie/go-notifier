@@ -24,7 +24,8 @@ type Store interface {
 	//ListByStatus(ctx context.Context, status model.ScheduledActionStatus) ([]*model.ScheduledAction, error)
 	//ListPending(ctx context.Context, before time.Time) ([]*model.ScheduledAction, error)
 
-	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	Exec(query string, args ...interface{}) error
 
 	Close() error
 	Ping(ctx context.Context) error

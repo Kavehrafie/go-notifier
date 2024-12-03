@@ -35,7 +35,7 @@ func NewApp(log *logrus.Logger) *App {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	scheduler := service.NewScheduler(&store, log)
+	scheduler := service.NewScheduler(store, log)
 	app := &App{
 		server:       e,
 		SchedulerSvc: scheduler,
@@ -47,9 +47,9 @@ func NewApp(log *logrus.Logger) *App {
 }
 
 func (a *App) routes() {
-	//api := a.server.Group("/api")
+	api := a.server.Group("/api")
 
-	//api.POST("/scheduled-actions", a.svc)
+	api.POST("/scheduled-actions", a.SchedulerSvc.CreateScheduledRequest)
 }
 
 func (a *App) Start(addr string) error {

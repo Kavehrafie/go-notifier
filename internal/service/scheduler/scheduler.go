@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/kavehrafie/go-scheduler/internal/model"
 	"github.com/kavehrafie/go-scheduler/internal/store"
+	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -31,7 +33,9 @@ func NewScheduler(store store.Store, logger *logrus.Logger) *Scheduler {
 
 func (s *Scheduler) Start(ctx context.Context) error {
 	_, err := s.cron.AddFunc("* * * * *", func() {
-		// execute this action on schedule
+		if err := s.processPendingRequests(); err != nil {
+			s.log.WithError(err).Error("failed to process pending requests")
+		}
 	})
 	if err != nil {
 		return fmt.Errorf("failed to schedule action: %v", err)
@@ -54,7 +58,9 @@ func (s *Scheduler) Stop() {
 
 func (s *Scheduler) processPendingRequests() error {
 	query := `SELECT * FROM scheduled_requests WHERE status = ? AND scheduled_at <= ?`
-	rows, err := s.store.Query(ctx, query, model.StatusPending, time.Now())
+
+	rows, err := s.store.Query(query, model.StatusPending, time.Now())
+	defer rows.Close()
 
 	for rows.Next() {
 		var sq model.ScheduledRequest
@@ -85,12 +91,12 @@ func (s *Scheduler) processPendingRequests() error {
 
 		if err := s.executeRequest(&sq); err != nil {
 			s.log.WithError(err).WithField("request_id", sq.ID).Error("failed to execute scheduled request")
-			_, err := s.db.Exec(`UPDATE scheduled_requests SET status = ?, error = ? WHERE id = ?`, model.StatusFailed, fmt.Sprintf("%v", err), sq.ID)
+			err := s.store.Exec(`UPDATE scheduled_requests SET status = ?, error = ? WHERE id = ?`, model.StatusFailed, fmt.Sprintf("%v", err), sq.ID)
 			if err != nil {
 				s.log.WithError(err).Error("failed to update scheduled request status")
 			}
 		} else {
-			_, err := s.db.Exec(`UPDATE scheduled_requests SET status = ?, executed_at = ? WHERE id = ?`, model.StatusResolved, time.Now(), sq.ID)
+			err := s.store.Exec(`UPDATE scheduled_requests SET status = ?, executed_at = ? WHERE id = ?`, model.StatusResolved, time.Now(), sq.ID)
 			if err != nil {
 				s.log.WithError(err).Error("failed to update scheduled request status")
 			}
@@ -122,4 +128,45 @@ func (s *Scheduler) executeRequest(sq *model.ScheduledRequest) error {
 	}
 
 	return nil
+}
+
+func (s *Scheduler) CreateScheduledRequest(c echo.Context) error {
+	var input model.ScheduledRequestRegisterInput
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	sr := &model.ScheduledRequest{
+		ID:          uuid.NewString(),
+		Title:       input.Title,
+		Description: input.Description,
+		URL:         input.URL,
+		Payload:     input.Payload,
+		Header:      input.Header,
+		ScheduledAt: input.ScheduledAt,
+		Status:      model.StatusPending,
+		CreatedAt:   time.Now(),
+	}
+
+	headersJSON, err := json.Marshal(sr.Header)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	err = s.store.Exec(`INSERT INTO scheduled_requests (id, title, description, url, payload, header, scheduled_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		sr.ID,
+		sr.Title,
+		sr.Description,
+		sr.URL,
+		sr.Payload,
+		headersJSON,
+		sr.ScheduledAt,
+		sr.Status,
+		sr.CreatedAt,
+	)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, sr)
 }
