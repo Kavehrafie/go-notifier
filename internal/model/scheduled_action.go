@@ -2,36 +2,43 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
+	"encoding/json"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
+	"net/http"
 	"time"
 )
 
-type ScheduledActionStatus int
+type ScheduledRequestStatus int
 
 var validate *validator.Validate
 
 const (
-	StatusPending ScheduledActionStatus = 0
-	StatusSent    ScheduledActionStatus = 1
-	StatusFailed  ScheduledActionStatus = 2
-	StatusDeleted ScheduledActionStatus = 3
+	StatusDisabled ScheduledRequestStatus = 0
+	StatusActive   ScheduledRequestStatus = 1
 )
 
-type ScheduledAction struct {
-	ID          string                `json:"id" db:"id"`
-	Title       string                `json:"title" db:"title"`
-	Description string                `json:"description" db:"description"`
-	ScheduledAt time.Time             `json:"schedule_at" db:"schedule_at"`
-	CreatedAt   time.Time             `json:"created_at" db:"created_at"`
-	UpdatedAt   sql.NullTime          `json:"updated_at" db:"updated_at"`
-	DeletedAt   sql.NullTime          `json:"deleted_at" db:"deleted_at"`
-	URL         string                `json:"url" db:"url"`
-	Status      ScheduledActionStatus `json:"status" db:"status"`
-	Payload     string                `json:"payload" db:"payload"`
-	Metadata    map[string]string     `json:"metadata" db:"metadata"`
-	Failures    int                   `json:"failures" db:"failures"`
+type ScheduledRequest struct {
+	ID          string                 `json:"id" db:"id"`
+	Title       string                 `json:"title" db:"title"`
+	Description string                 `json:"description" db:"description"`
+	ScheduledAt time.Time              `json:"schedule_at" db:"schedule_at"`
+	CreatedAt   time.Time              `json:"created_at" db:"created_at"`
+	ExecutedAt  sql.NullTime           `json:"executed_at" db:"executed_at"`
+	DeletedAt   sql.NullTime           `json:"deleted_at" db:"deleted_at"`
+	URL         string                 `json:"url" db:"url"`
+	Header      map[string]string      `json:"header" db:"header"`
+	Status      ScheduledRequestStatus `json:"status" db:"status"`
+	Payload     json.RawMessage        `json:"payload" db:"payload"`
+	Error       string                 `json:"error" db:"error,omitempty"`
+}
+
+type Scheduler struct {
+	db     *sql.DB
+	log    *logrus.Logger
+	client *http.Client
+	cron   *cron.Cron
 }
 
 type ScheduleActionRegisterInput struct {
@@ -40,7 +47,7 @@ type ScheduleActionRegisterInput struct {
 	URL         string            `json:"url"  validate:"required,url"`
 	Payload     string            `json:"payload"  validate:"required,json"`
 	ScheduledAt time.Time         `json:"scheduled_at" validate:"required,future_time"`
-	Metadata    map[string]string `json:"metadata"  validate:"omitempty,dive,keys,max=50,endkeys,max=200"`
+	Header      map[string]string `json:"header"  validate:"omitempty,dive,keys,max=50,endkeys,max=200"`
 }
 
 type ValidationError struct {
@@ -63,35 +70,35 @@ func validateFutureTime(fl validator.FieldLevel) bool {
 	return timeValue.After(time.Now())
 }
 
-func (input *ScheduleActionRegisterInput) Validate() []ValidationError {
-	if err := validate.Struct(input); err != nil {
-		var validationErrors []ValidationError
+//func (input *ScheduleActionRegisterInput) Validate() []ValidationError {
+//	if err := validate.Struct(input); err != nil {
+//		var validationErrors []ValidationError
+//
+//		for _, err := range err.(validator.ValidationErrors) {
+//			validationErrors = append(validationErrors, ValidationError{
+//				Field: err.Field(),
+//				Tag:   err.Tag(),
+//				Value: err.Value(),
+//			})
+//		}
+//		return validationErrors
+//	}
+//	return nil
+//}
 
-		for _, err := range err.(validator.ValidationErrors) {
-			validationErrors = append(validationErrors, ValidationError{
-				Field: err.Field(),
-				Tag:   err.Tag(),
-				Value: err.Value(),
-			})
-		}
-		return validationErrors
-	}
-	return nil
-}
-
-func (input *ScheduleActionRegisterInput) ToSchedule() (*ScheduledAction, error) {
-	if errs := input.Validate(); len(errs) > 0 {
-		return nil, fmt.Errorf("validation failed: %v", errs)
-	}
-
-	return &ScheduledAction{
-		ID:          uuid.NewString(),
-		Status:      StatusPending,
-		Title:       input.Title,
-		Payload:     input.Payload,
-		CreatedAt:   time.Now(),
-		Metadata:    input.Metadata,
-		ScheduledAt: input.ScheduledAt,
-		URL:         input.URL,
-	}, nil
-}
+//func (input *ScheduleActionRegisterInput) ToSchedule() (*ScheduledAction, error) {
+//	if errs := input.Validate(); len(errs) > 0 {
+//		return nil, fmt.Errorf("validation failed: %v", errs)
+//	}
+//
+//	return &ScheduledAction{
+//		ID:          uuid.NewString(),
+//		Status:      StatusPending,
+//		Title:       input.Title,
+//		Payload:     input.Payload,
+//		CreatedAt:   time.Now(),
+//		Metadata:    input.Metadata,
+//		ScheduledAt: input.ScheduledAt,
+//		URL:         input.URL,
+//	}, nil
+//}
