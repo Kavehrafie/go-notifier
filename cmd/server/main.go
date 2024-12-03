@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/kavehrafie/go-scheduler/internal/config"
+	"github.com/kavehrafie/go-scheduler/internal/model"
 	"github.com/kavehrafie/go-scheduler/internal/store/sqlite"
 	"github.com/kavehrafie/go-scheduler/pkg/database"
 	"log"
@@ -34,18 +36,18 @@ func main() {
 	}
 	defer store.Close()
 
-	//sa := &model.ScheduledAction{
-	//	ID:          uuid.New().String(),
-	//	Title:       "Example Action",
-	//	Status:      model.StatusPending,
-	//	URL:         "http://example.com",
-	//	ScheduledAt: time.Now().Add(25 * time.Hour),
-	//}
+	sa := &model.ScheduledAction{
+		ID:          uuid.New().String(),
+		Title:       "Example Action",
+		Status:      model.StatusPending,
+		URL:         "http://example.com",
+		ScheduledAt: time.Now().Add(25 * time.Hour),
+	}
 
 	ctx := context.Background()
-	//if err := store.Create(ctx, sa); err != nil {
-	//	log.Fatal(err)
-	//}
+	if err := store.Create(ctx, sa); err != nil {
+		log.Fatal(err)
+	}
 
 	pending, err := store.ListPending(ctx, time.Now())
 	if err != nil {
