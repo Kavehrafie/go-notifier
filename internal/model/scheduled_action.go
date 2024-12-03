@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -24,8 +25,8 @@ type ScheduledAction struct {
 	Description string                `json:"description" db:"description"`
 	ScheduledAt time.Time             `json:"schedule_at" db:"schedule_at"`
 	CreatedAt   time.Time             `json:"created_at" db:"created_at"`
-	UpdateAt    time.Time             `json:"updated_at" db:"updated_at"`
-	DeletedAt   time.Time             `json:"deleted_at" db:"deleted_at"`
+	UpdatedAt   sql.NullTime          `json:"updated_at" db:"updated_at"`
+	DeletedAt   sql.NullTime          `json:"deleted_at" db:"deleted_at"`
 	URL         string                `json:"url" db:"url"`
 	Status      ScheduledActionStatus `json:"status" db:"status"`
 	Payload     string                `json:"payload" db:"payload"`

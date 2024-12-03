@@ -7,6 +7,8 @@ import (
 	"github.com/kavehrafie/go-scheduler/internal/model"
 	"github.com/kavehrafie/go-scheduler/internal/store/sqlite"
 	"github.com/kavehrafie/go-scheduler/pkg/database"
+
+	"github.com/sirupsen/logrus"
 	"log"
 	"time"
 )
@@ -49,12 +51,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pending, err := store.ListPending(ctx, time.Now())
+	pending, err := store.ListByStatus(ctx, model.StatusPending)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println(pending)
+	for i, schedule := range pending {
+		logrus.WithFields(logrus.Fields{
+			"index":       i,
+			"id":          schedule.ID,
+			"title":       schedule.Title,
+			"status":      schedule.Status,
+			"url":         schedule.URL,
+			"scheduledAt": schedule.ScheduledAt,
+		}).Info("schedule details")
+	}
 
 	// ✅ 3. echo server
 	//e := echo.New()

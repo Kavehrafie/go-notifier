@@ -62,8 +62,9 @@ func (s *sqliteStore) initSchema() error {
 		    metadata TEXT,
 		    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		    scheduled_at DATETIME NOT NULL,
-		    failed_at INTEGER DEFAULT 0,
-		    updated_at DATETIME
+		    failures INTEGER DEFAULT 0,
+		    updated_at DATETIME,
+			deleted_at DATETIME
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_scheduled_actions_status ON scheduled_actions(status);
@@ -203,7 +204,7 @@ func (s *sqliteStore) List(ctx context.Context, offset, limit int) ([]*model.Sch
 }
 
 func (s *sqliteStore) ListByStatus(ctx context.Context, status model.ScheduledActionStatus) ([]*model.ScheduledAction, error) {
-	query := `SELECT * FROM scheduled_actions WHERE status = ? ORDER BY scheduled_at DESC LIMIT ?`
+	query := `SELECT * FROM scheduled_actions WHERE status = ? ORDER BY scheduled_at DESC`
 
 	return s.queryActions(ctx, query, status)
 }
@@ -233,11 +234,16 @@ func (s *sqliteStore) queryActions(ctx context.Context, query string, arg ...int
 			&sa.Title,
 			&sa.Status,
 			&sa.Description,
+			&sa.URL,
 			&sa.Payload,
-			&sa.ScheduledAt,
 			&metadata,
+			&sa.CreatedAt,
+			&sa.ScheduledAt,
 			&sa.Failures,
+			&sa.UpdatedAt,
+			&sa.DeletedAt,
 		)
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan scheduled action: %v", err)
 		}

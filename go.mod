@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/google/uuid v1.6.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
 	github.com/subosito/gotenv v1.6.0
 	modernc.org/sqlite v1.34.2
