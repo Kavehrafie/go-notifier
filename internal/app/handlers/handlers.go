@@ -22,6 +22,14 @@ func NewHandler(repo repository.Repository, log *logrus.Logger) *Handler {
 
 func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	e.POST("/tasks", h.CreateTask)
+
+	e.GET("/dummy", h.GetDummy)
+}
+
+func (h *Handler) GetDummy(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]string{
+		"msg": "This is a dummy url",
+	})
 }
 
 func (h *Handler) CreateTask(c echo.Context) error {

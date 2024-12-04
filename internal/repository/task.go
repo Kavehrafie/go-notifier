@@ -48,7 +48,7 @@ func (s *SQLiteTaskRepository) Create(ctx context.Context, input *domain.TaskCre
 		Status:    domain.TaskStatusRunning,
 		CreatedAt: time.Now(),
 		Payload:   input.Payload,
-		ExecuteAt: input.ExecuteAt,
+		ExecuteAt: time.Now().Add(time.Second * time.Duration(input.After)),
 		URL:       input.URL,
 	}
 
