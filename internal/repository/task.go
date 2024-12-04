@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     url TEXT NOT NULL,
     payload TEXT NOT NULL,
-    executed_at DATETIME NOT NULL,
+    execute_at DATETIME NOT NULL,
     status INTEGER NOT NULL,
     create_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
 	
@@ -41,7 +41,7 @@ type SQLiteTaskRepository struct {
 }
 
 func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task, log *logrus.Logger) error {
-	query := `INSERT INTO tasks (id, url, payload, executed_at, status) 
+	query := `INSERT INTO tasks (id, url, payload, execute_at, status) 
 				VALUES (?, ?, ?, ?, ?)`
 	now := time.Now()
 	task.Status = domain.TaskStatusRunning
@@ -65,8 +65,32 @@ func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task, lo
 	return nil
 }
 
-func (s *SQLiteTaskRepository) ListPendingTasks(ctx context.Context) ([]*domain.Task, error) {
-	return nil, nil
+func (s *SQLiteTaskRepository) ListPendingTasks(ctx context.Context) ([]domain.Task, error) {
+	query := `SELECT id, url, payload, execute_at, status FROM tasks WHERE status = ? AND execute_at >= ?`
+
+	rows, err := s.db.QueryContext(ctx, query, domain.TaskStatusRunning, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ts []domain.Task
+	for rows.Next() {
+		var t domain.Task
+		err = rows.Scan(
+			&t.ID,
+			&t.URL,
+			&t.Payload,
+			&t.ExecuteAt,
+			&t.Status,
+		)
+		if err != nil {
+			return nil, err
+		}
+		ts = append(ts, t)
+	}
+
+	return ts, nil
 }
 
 func (s *SQLiteTaskRepository) UpdateStatus(ctx context.Context, id string, status int) error {

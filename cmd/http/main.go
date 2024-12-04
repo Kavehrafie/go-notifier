@@ -44,6 +44,18 @@ func main() {
 	log.WithFields(logrus.Fields{
 		"taskId": t.ID,
 	}).Info("task created")
+
+	tasks, err := tr.ListPendingTasks(ctx)
+	if err != nil {
+		log.Warningln(err)
+	}
+
+	for _, task := range tasks {
+		log.WithFields(logrus.Fields{
+			"taskId": task.ID,
+		}).Info("task pending")
+	}
+
 }
 
 func loadConfig() *config.Config {
