@@ -1,23 +1,26 @@
 package database
 
-type Driver string
-
-const (
-	SQLite   Driver = "sqlite"
-	Postgres Driver = "postgres"
-	Redis    Driver = "redis"
+import (
+	"database/sql"
+	"fmt"
+	"github.com/kavehrafie/go-scheduler/pkg/config"
+	"github.com/sirupsen/logrus"
+	_ "modernc.org/sqlite"
 )
 
-type Config struct {
-	Driver   Driver
-	Database string
-	URL      string
-	// 1. define database config
+type Store interface {
+	GetDB() *sql.DB
+	GetDriverName() string
 }
 
-//database url patterns:
-//url: "sqlite://schedules.db"
-//# or
-//url: "postgres://user:pass@localhost:5432/schedules"
-//# or
-//url: "redis://:pass@localhost:6379/0"
+func NewStore(cfg *config.Config, log *logrus.Logger) (Store, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	if cfg.DB.Driver == "sqlite3" || cfg.DB.Driver == "sqlite" {
+		return NewSQLiteStore(log)
+	}
+
+	return nil, fmt.Errorf("unknown driver %s", cfg.DB.Driver)
+}
