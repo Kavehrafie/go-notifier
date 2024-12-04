@@ -1,5 +1,6 @@
 server:
   env: development
+  port: 8080
 db:
   driver: sqlite3
   max_conns: 15

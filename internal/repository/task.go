@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/kavehrafie/go-scheduler/pkg/database"
 	"github.com/kavehrafie/go-scheduler/pkg/domain"
-	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -40,13 +39,19 @@ type SQLiteTaskRepository struct {
 	db *sql.DB
 }
 
-func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task, log *logrus.Logger) error {
+func (s *SQLiteTaskRepository) Create(ctx context.Context, input *domain.TaskCreateInput) error {
 	query := `INSERT INTO tasks (id, url, payload, execute_at, status) 
 				VALUES (?, ?, ?, ?, ?)`
-	now := time.Now()
-	task.Status = domain.TaskStatusRunning
-	task.CreatedAt = now
-	task.ID = uuid.NewString()
+
+	task := domain.Task{
+		ID:        uuid.NewString(),
+		Status:    domain.TaskStatusRunning,
+		CreatedAt: time.Now(),
+		Payload:   input.Payload,
+		ExecuteAt: input.ExecuteAt,
+		URL:       input.URL,
+	}
+
 	result, err := s.db.ExecContext(ctx, query,
 		task.ID,
 		task.URL,
@@ -57,16 +62,15 @@ func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task, lo
 	if err != nil {
 		return err
 	}
-	id, err := result.LastInsertId()
+	_, err = result.LastInsertId()
 	if err != nil {
 		return err
 	}
-	log.Print("id: %v", id)
 	return nil
 }
 
 func (s *SQLiteTaskRepository) ListPendingTasks(ctx context.Context) ([]domain.Task, error) {
-	query := `SELECT id, url, payload, execute_at, status FROM tasks WHERE status = ? AND execute_at >= ?`
+	query := `SELECT id, url, payload, execute_at, status FROM tasks WHERE status = ? AND execute_at <= ?`
 
 	rows, err := s.db.QueryContext(ctx, query, domain.TaskStatusRunning, time.Now())
 	if err != nil {
@@ -93,6 +97,16 @@ func (s *SQLiteTaskRepository) ListPendingTasks(ctx context.Context) ([]domain.T
 	return ts, nil
 }
 
-func (s *SQLiteTaskRepository) UpdateStatus(ctx context.Context, id string, status int) error {
+func (s *SQLiteTaskRepository) UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error {
+	query := `UPDATE tasks SET status = ? WHERE id = ?`
+	res, err := s.db.ExecContext(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+
+	num, _ := res.RowsAffected()
+	if num < 1 {
+		return errors.New("task not found")
+	}
 	return nil
 }

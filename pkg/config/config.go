@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 
 	// bind environment variables
 	viper.BindEnv("db.url", "DATABASE_URL")
-	viper.BindEnv("server.port", "PORT")
+	//viper.BindEnv("server.port", "PORT")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
