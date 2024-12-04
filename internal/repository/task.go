@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kavehrafie/go-scheduler/pkg/database"
 	"github.com/kavehrafie/go-scheduler/pkg/domain"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -16,15 +17,15 @@ func newSQLiteTaskRepository(store *database.Store) (*SQLiteTaskRepository, erro
 		return nil, errors.New("database pointer is empty")
 	}
 	_, err := db.Exec(`
-CREATE TABLE IF NOT EXISTS task (
+CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     url TEXT NOT NULL,
     payload TEXT NOT NULL,
-    executed_at TIMESTAMP NOT NULL,
+    executed_at DATETIME NOT NULL,
     status INTEGER NOT NULL,
-    create_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)
+    create_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
 	
-	CREATE INDEX IF NOT EXISTS idx_task_status ON task(status);
+	CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 	`)
 	if err != nil {
 		return nil, err
@@ -39,12 +40,9 @@ type SQLiteTaskRepository struct {
 	db *sql.DB
 }
 
-func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task) error {
-	query := `
-
-INSERT INTO task (id, url, payload, executed_at, status, create_at, status) 
-VALUES (?, ?, ?, ?, ?, ?, ?)
-`
+func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task, log *logrus.Logger) error {
+	query := `INSERT INTO tasks (id, url, payload, executed_at, status) 
+				VALUES (?, ?, ?, ?, ?)`
 	now := time.Now()
 	task.Status = domain.TaskStatusRunning
 	task.CreatedAt = now
@@ -59,11 +57,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 	if err != nil {
 		return err
 	}
-	_, err = result.RowsAffected()
+	id, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
-
+	log.Print("id: %v", id)
 	return nil
 }
 
