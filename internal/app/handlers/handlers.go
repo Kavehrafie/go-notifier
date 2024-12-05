@@ -4,8 +4,10 @@ import (
 	"github.com/kavehrafie/go-scheduler/internal/repository"
 	"github.com/kavehrafie/go-scheduler/pkg/domain"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 type Handler struct {
@@ -21,27 +23,45 @@ func NewHandler(repo repository.Repository, log *logrus.Logger) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(e *echo.Echo) {
-	e.POST("/tasks", h.CreateTask)
 
-	e.GET("/dummy", h.GetDummy)
-}
+	rateLimiter := middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20))
 
-func (h *Handler) GetDummy(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{
-		"msg": "This is a dummy url",
-	})
+	api := e.Group("/api/v1")
+	api.Use(rateLimiter)
+
+	task := e.Group("/tasks")
+	task.POST("", h.CreateTask)
+	task.GET("", h.ListTasks)
+	task.GET("/:id", h.GetTask)
+
 }
 
 func (h *Handler) CreateTask(c echo.Context) error {
-	var task domain.TaskCreateInput
-	if err := c.Bind(&task); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	var input domain.TaskCreateInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
+	// todo: validate
+
 	tr := h.repo.GetTaskRepository()
-	if err := tr.Create(c.Request().Context(), &task); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	task := &domain.Task{
+		URL:       input.URL,
+		Payload:   input.Payload,
+		ExecuteAt: time.Now().Add(time.Second * input.After),
+	}
+	if err := tr.Create(c.Request().Context(), task); err != nil {
+		h.log.Errorf("failed to create task: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create task"})
 	}
 
 	return c.JSON(http.StatusCreated, task)
+}
+
+func (h *Handler) ListTasks(c echo.Context) error {
+
+}
+
+func (h *Handler) GetTask(c echo.Context) error {
+
 }

@@ -39,18 +39,13 @@ type SQLiteTaskRepository struct {
 	db *sql.DB
 }
 
-func (s *SQLiteTaskRepository) Create(ctx context.Context, input *domain.TaskCreateInput) error {
+func (s *SQLiteTaskRepository) Create(ctx context.Context, task *domain.Task) error {
 	query := `INSERT INTO tasks (id, url, payload, execute_at, status) 
 				VALUES (?, ?, ?, ?, ?)`
 
-	task := domain.Task{
-		ID:        uuid.NewString(),
-		Status:    domain.TaskStatusRunning,
-		CreatedAt: time.Now(),
-		Payload:   input.Payload,
-		ExecuteAt: time.Now().Add(time.Second * time.Duration(input.After)),
-		URL:       input.URL,
-	}
+	task.ID = uuid.NewString()
+	task.Status = domain.TaskStatusRunning
+	task.CreatedAt = time.Now()
 
 	result, err := s.db.ExecContext(ctx, query,
 		task.ID,
@@ -66,6 +61,7 @@ func (s *SQLiteTaskRepository) Create(ctx context.Context, input *domain.TaskCre
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

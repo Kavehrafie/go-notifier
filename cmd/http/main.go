@@ -1,27 +1,31 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"github.com/kavehrafie/go-scheduler/internal/app"
+	"github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	a := app.New()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	if err := a.Run(); err != nil {
-		fmt.Println(err)
+	application := app.New()
+
+	// handle shutdown gracefully
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		logrus.Infof("received signal: %v", sig)
+		cancel()
+	}()
+
+	if err := application.Run(ctx); err != nil {
+		logrus.Fatalf("error running application: %v", err)
 	}
-	//port := fmt.Sprintf(":%s", a.Cfg.Server.Port)
-
-	// Graceful shutdown
-	//quit := make(chan os.Signal, 1)
-	//signal.Notify(quit, os.Interrupt)
-	//go func() {
-	//	<-quit
-	//	if err := a.Echo.Shutdown(context.Background()); err != nil {
-	//		a.Echo.Logger.Fatal(err)
-	//	}
-	//}()
-
-	//a.Echo.Logger.Fatal(a.Echo.Start(port))
 }

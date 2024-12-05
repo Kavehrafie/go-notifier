@@ -6,7 +6,7 @@ import (
 )
 
 type TaskRepository interface {
-	Create(ctx context.Context, task *domain.TaskCreateInput) error
+	Create(ctx context.Context, task *domain.Task) error
 	ListPendingTasks(ctx context.Context) ([]domain.Task, error)
 	UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error
 }

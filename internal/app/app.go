@@ -12,18 +12,15 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
 type App struct {
-	Log   *logrus.Logger
-	Cfg   *config.Config
-	Echo  *echo.Echo
-	Repo  *repository.Repository
-	ScSvc *service.SchedulerService
+	log       *logrus.Logger
+	cfg       *config.Config
+	echo      *echo.Echo
+	repo      *repository.Repository
+	scheduler *service.SchedulerService
 }
 
 func New() *App {
@@ -55,11 +52,11 @@ func New() *App {
 	h.RegisterRoutes(e)
 
 	return &App{
-		Log:   log,
-		Cfg:   cfg,
-		Echo:  e,
-		Repo:  &repo,
-		ScSvc: svc,
+		log:       log,
+		cfg:       cfg,
+		echo:      e,
+		repo:      &repo,
+		scheduler: svc,
 	}
 }
 
@@ -72,30 +69,27 @@ func loadConfig() *config.Config {
 	return cfg
 }
 
-func (a *App) Run() error {
-	a.ScSvc.Start()
-	defer a.ScSvc.Stop()
+func (a *App) Run(ctx context.Context) error {
 
-	// Setup graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	a.scheduler.Start(ctx)
+	defer a.scheduler.Stop()
 
-	// Start server in a goroutine
+	// start the http server
 	go func() {
-		if err := a.Echo.Start(fmt.Sprintf(":%v", a.Cfg.Server.Port)); err != nil && err != http.ErrServerClosed {
-			a.Log.Fatalf("shutting down the server: %v", err)
+		if err := a.echo.Start(fmt.Sprintf(":%v", a.cfg.Server.Port)); err != nil && err != http.ErrServerClosed {
+			a.log.Fatalf("failed to start http server: %v", err)
 		}
 	}()
 
-	// Wait for interrupt signal
-	<-quit
+	// wait for context cancellation
+	<-ctx.Done()
 
-	// Gracefully shutdown the server with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := a.Echo.Shutdown(ctx); err != nil {
-		return fmt.Errorf("error during server shutdown: %v", err)
+	if err := a.echo.Shutdown(shutdownCtx); err != nil {
+		a.log.Errorf("failed to shutdown http server: %v", err)
 	}
 
 	return nil

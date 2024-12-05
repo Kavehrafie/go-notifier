@@ -26,5 +26,5 @@ type TaskCreateInput struct {
 	URL     string `json:"url"`
 	Payload string `json:"payload"`
 	//ExecuteAt time.Time `json:"execute_at"`
-	After int8 `json:"after"`
+	After time.Duration `json:"after"`
 }
